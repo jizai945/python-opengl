@@ -1,6 +1,7 @@
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
+from polygon import *
 
 
 class Show(object):
@@ -10,18 +11,19 @@ class Show(object):
         self.l, self.r, self.b, self.t = -50, 50, -50, 50
         self.mouse_x, self.mouse_y = 0, 0 # 记录拖拽时上一次鼠标位置
         self.real_x, self.real_y = 0, 0 # 记录实时位置
+        self.isFirst = True             # 用于第一次加载标志
 
     def gl_init(self):
         glClearColor(1.0, 1.0, 1.0, 0.0)
         glMatrixMode(GL_PROJECTION) # 正投影
-        glLoadIdentity()
-        gluOrtho2D(self.l, self.r, self.b, self.t) # 定义xy轴范围
+        # glLoadIdentity()
+        # gluOrtho2D(self.l, self.r, self.b, self.t) # 定义xy轴范围
 
     def draw_aes(self):
         glColor3f(61/255, 89/255, 171/255)
-        glLineWidth(1)
+        glLineWidth(0.1)
         glEnable(GL_LINE_STIPPLE)
-        glLineStipple(1, 0x0101)
+        glLineStipple(1, 0x0707)
         glBegin(GL_LINES)
         
         # 两个点一条线
@@ -41,33 +43,35 @@ class Show(object):
         glPolygonMode(GL_BACK, GL_LINE); 
         glLineWidth(1)
 
-        # 顺时针
-        glColor3f(self.per[0], self.per[1], self.per[2])
-        glBegin(GL_POLYGON)
-        glVertex2f(0, 0)
-        glVertex2f(0 , 10)
-        glVertex2f(10, 10)
-        glVertex2f(10, 0)
-        glEnd()
-        # 逆时针
-        glColor3f(0, 0, 0)  # 设定颜色RGB
-        glBegin(GL_POLYGON)
-        glVertex2f(5, 5)
-        glVertex2f(3, 5)
-        glVertex2f(3, 3)
-        glVertex2f(5, 3)
-        glEnd()
-        
-        # 顺时针
-        glColor3f(self.per[0], self.per[1], self.per[2])
-        glBegin(GL_POLYGON)
-        glVertex2f(20, 20)
-        glVertex2f(25, 15)
-        glVertex2f(15, 15)
-        glEnd()
+        for polygon in self.polygon_set:
+            glColor3f(self.per[0], self.per[1], self.per[2])
+            glBegin(GL_POLYGON)
+            for pt in polygon.hull():
+                glVertex2f(pt.x(), pt.y())
+            glEnd()
+            
+            for hole in polygon.holes():
+                glColor3f(0, 0, 0)  # 设定颜色RGB
+                glBegin(GL_POLYGON)
+                for pt in hole:
+                    glVertex2f(pt.x(), pt.y())
+                glEnd()
+               
+        if self.isFirst:
+            self.isFirst = False
+            print('draw')
+            self.l, self.b, self.r, self.t = self.polygon_set.bbox()
+            self.l -= 10
+            self.b -= 10
+            self.r += 10
+            self.t += 10
+            glLoadIdentity()
+            gluOrtho2D(self.l, self.r, self.b, self.t)
+            glutPostRedisplay()
         
     def draw(self):
         glClear(GL_COLOR_BUFFER_BIT)
+        # glTranslatef(100, 100, 0.0) # 偏移
         self.draw_aes()
         self.draw_polygon_demo()
         glFlush()  # 执行绘图
@@ -109,6 +113,8 @@ class Show(object):
             self.r += 10
             self.b -= 10
             self.t += 10
+            
+        
         elif button == 3:
              # 滚轮上滑 放大
             # print('add')
@@ -119,9 +125,13 @@ class Show(object):
             if self.t - self.b > 30:
                 self.b += 10
                 self.t -= 10
-            
-        self.gl_init()
-        glutPostRedisplay() #重新调用绘制函数
+
+        else:
+            return
+        
+        glLoadIdentity()
+        gluOrtho2D(self.l, self.r, self.b, self.t)
+        glutPostRedisplay()
 
     def mousemotion(self, x, y):
         # print(x, y)
@@ -139,7 +149,9 @@ class Show(object):
         self.b -= y_move
         self.t -= y_move
         # print(f'l_x: {self.l_x} l_y: {self.l_y}')
-        self.gl_init()
+        glLoadIdentity()
+        gluOrtho2D(self.l, self.r, self.b, self.t)
+        glutPostRedisplay()
         
         self.mouse_x, self.mouse_y = to_x,  to_y
 
@@ -152,6 +164,10 @@ class Show(object):
         self.real_x = self.l + x/view[2] * (self.r - self.l)
         self.real_y = self.b + (view[3] - y) /view[3] * (self.t - self.b)
 
+    def load_polygon(self):
+        self.polygon_set = PolygonSet()
+        self.polygon_set.load_file('polygon.txt')
+
 if __name__ == '__main__':
     glutInit()                           # 1. 初始化glut库
     displayMode = GLUT_RGB | GLUT_SINGLE
@@ -162,14 +178,15 @@ if __name__ == '__main__':
     glutCreateWindow('Demo')
     
     show =  Show()
+    show.load_polygon()                     # 加载多边形数据
     show.gl_init()                           # 初始化画布
     glutDisplayFunc(show.draw)               # 注册回调函数draw()
     # glutKeyboardFunc(show.key)               # 按键
     # glutSpecialFunc(show.keyspec)            # 特殊按键 
     glutMouseFunc(show.mouse)                # 鼠标
     glutMotionFunc(show.mousemotion)         # 注册响应鼠标拖拽的函数mousemotion()
-    glutTimerFunc(1000, show.timer, 1)
+    # glutTimerFunc(1000, show.timer, 1)
     
-    glutPassiveMotionFunc(show.test)
+    # glutPassiveMotionFunc(show.test)
     
     glutMainLoop()                           # 进入glut主循环    
