@@ -37,7 +37,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     window = MyWidget()
-    window.setFixedSize(1000,1000)
+    window.setFixedSize(900,900)
     window.show()
  
     sys.exit(app.exec_())

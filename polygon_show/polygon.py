@@ -92,6 +92,13 @@ class PolygonSet(object):
             with open(file, 'r') as f:
                 lines = f.readlines()
                 for line in lines:
+                    
+                    while True:
+                        new = line.replace(', ', ',')
+                        if new == line:
+                            break
+                        line = new
+
                     ls = line.split('\\') # 切分hull 和 hole
                     hull_str = ls[0].replace('\n', '').split(' ')
                     pol = Polygon([],[])
